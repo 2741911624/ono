@@ -2,11 +2,13 @@ name: Android CI
 
 on:
   push:
-    branches: [ "main" ]  # 当你推送到 master 分支时触发
+    branches: [ "main" ]  # 当你推送到 main 分支时触发
+    tags:
+      - 'v*'  # 当创建以v开头的tag时触发
   workflow_dispatch:  # 也可以手动触发
 
 permissions:
-  contents: readin
+  contents: write
   pages: write
   id-token: write
 
@@ -19,12 +21,16 @@ jobs:
       with:
         submodules: 'recursive'
         fetch-depth: 0
-    - name: set up JDK
+
+    - name: Set up JDK
       uses: actions/setup-java@v4
       with:
-        java-version: '21'  # 根据你的项目需求选择合适的 Java 版本
+        java-version: '21'
         distribution: 'temurin'
         cache: gradle
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
 
     - name: Build with Gradle
       run: |
@@ -32,11 +38,26 @@ jobs:
         echo 'org.gradle.parallel=true' >> gradle.properties
         echo 'org.gradle.vfs.watch=true' >> gradle.properties
         echo 'org.gradle.jvmargs=-Xmx2048m' >> gradle.properties
-        ./gradlew assembleDebug  # 编译调试版本的 APK
+        ./gradlew assembleDebug
         ./gradlew --stop
 
-    - name: Upload APK
+    - name: Get version from tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      if: startsWith(github.ref, 'refs/tags/')
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: app/build/outputs/apk/debug/app-debug.apk
+        name: Release ${{ steps.get_version.outputs.VERSION }}
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+
+    - name: Upload Build Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: app-debug.apk
-        path: app/build/outputs/apk/debug/app-debug.apk  # 上传生成的 APK 文件
+        name: app-debug
+        path: app/build/outputs/apk/debug/app-debug.apk
