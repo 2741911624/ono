@@ -2,7 +2,7 @@ name: Android CI
 
 on:
   push:
-    branches: [ "master" ]  # 当你推送到 master 分支时触发
+    branches: [ "main" ]  # 当你推送到 master 分支时触发
   workflow_dispatch:  # 也可以手动触发
 
 permissions:
@@ -36,6 +36,7 @@ jobs:
         echo 'org.gradle.parallel=true' >> gradle.properties
         echo 'org.gradle.vfs.watch=true' >> gradle.properties
         echo 'org.gradle.jvmargs=-Xmx2048m' >> gradle.properties
+        chmod +x gradlew  # 添加执行权限
         ./gradlew assembleDebug  # 编译调试版本的 APK
         ./gradlew --stop
       env:
